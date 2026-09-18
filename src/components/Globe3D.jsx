@@ -1,15 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useApp } from '../context/AppContext';
 import { CATEGORIES, CONTINENT_LABELS } from '../data/mockEvents';
 import { LAND_RINGS } from '../data/landRings';
+import {
+  COUNTRY_BORDERS,
+  STATE_BORDERS,
+  COUNTRY_LABELS_LOD,
+  STATE_LABELS_LOD
+} from '../data/bordersData';
 import {
   Plus,
   Minus,
   Crosshair,
   ShieldCheck,
   Pause,
-  Play
+  Play,
+  Layers
 } from 'lucide-react';
 
 export default function Globe3D() {
@@ -17,7 +24,6 @@ export default function Globe3D() {
   const {
     filteredEvents,
     handleSelectEvent,
-    hoveredEvent,
     setHoveredEvent,
     autoRotate,
     setAutoRotate,
@@ -35,7 +41,13 @@ export default function Globe3D() {
   const rendererRef = useRef(null);
   const globeGroupRef = useRef(null);
   const markersGroupRef = useRef(null);
-  const labelsGroupRef = useRef(null);
+  const continentLabelsGroupRef = useRef(null);
+  const countryLabelsGroupRef = useRef(null);
+  const stateLabelsGroupRef = useRef(null);
+  const countryBordersMeshRef = useRef(null);
+  const stateBordersMeshRef = useRef(null);
+  const countryBordersMatRef = useRef(null);
+  const stateBordersMatRef = useRef(null);
   const globeMeshRef = useRef(null);
   const pulseRingsRef = useRef([]);
 
@@ -48,6 +60,9 @@ export default function Globe3D() {
   const raycasterRef = useRef(new THREE.Raycaster());
   const mousePosRef = useRef(new THREE.Vector2());
   const autoRotateRef = useRef(autoRotate);
+
+  // Tactical LOD Zoom Level Status (Global, National, State)
+  const [zoomLodStatus, setZoomLodStatus] = useState('GLOBAL VIEW');
 
   // Cached Three.js textures
   const texturesCacheRef = useRef({ cyber: null, satellite: null });
@@ -65,7 +80,7 @@ export default function Globe3D() {
     }, {})
   );
 
-  // Convert Lat/Lng to Vector3 on Globe Surface (radius 100)
+  // Convert Lat/Lng to Vector3 on Globe Surface
   const latLngToVector3 = (lat, lng, radius = 100) => {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
@@ -73,6 +88,42 @@ export default function Globe3D() {
     const z = radius * Math.sin(phi) * Math.sin(theta);
     const y = radius * Math.cos(phi);
     return new THREE.Vector3(x, y, z);
+  };
+
+  // Helper: Build Curved Spherical LineSegments Geometry from 2D Lat/Lng Paths
+  const buildCurvedLineSegments = (paths, radius = 100.2) => {
+    const positions = [];
+
+    paths.forEach((path) => {
+      if (!path || path.length < 2) return;
+      for (let i = 0; i < path.length - 1; i++) {
+        const [lng1, lat1] = path[i];
+        const [lng2, lat2] = path[i + 1];
+
+        // Skip wrap-around segment jumps
+        if (Math.abs(lng2 - lng1) > 180) continue;
+
+        const v1 = latLngToVector3(lat1, lng1, radius);
+        const v2 = latLngToVector3(lat2, lng2, radius);
+        const dist = v1.distanceTo(v2);
+
+        // Subdivide longer lines along great circle arc
+        const steps = Math.max(1, Math.min(8, Math.ceil(dist / 4)));
+        let prevVec = v1;
+
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const nextVec = new THREE.Vector3().copy(v1).lerp(v2, t).normalize().multiplyScalar(radius);
+          positions.push(prevVec.x, prevVec.y, prevVec.z);
+          positions.push(nextVec.x, nextVec.y, nextVec.z);
+          prevVec = nextVec;
+        }
+      }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    return geometry;
   };
 
   // Helper: Draw all Landmass Rings onto Canvas context
@@ -93,7 +144,6 @@ export default function Globe3D() {
       ring.forEach(([lng, lat], i) => {
         const x = ((lng + 180) / 360) * canvasWidth;
         const y = ((90 - lat) / 180) * canvasHeight;
-        // Break segment if crossing the date line to prevent horizontal slash lines
         if (i === 0 || (prevLng !== null && Math.abs(lng - prevLng) > 180)) {
           ctx.moveTo(x, y);
         } else {
@@ -108,7 +158,7 @@ export default function Globe3D() {
     ctx.restore();
   };
 
-  // Generate High-Tech Procedural Earth Texture (Cyber Geoid Mode) using LAND_RINGS
+  // Generate High-Tech Procedural Earth Texture (Cyber Geoid Mode)
   const getCyberTexture = () => {
     if (texturesCacheRef.current.cyber) {
       return texturesCacheRef.current.cyber;
@@ -157,7 +207,7 @@ export default function Globe3D() {
       ctx.lineTo(x, canvas.height);
       ctx.stroke();
     }
-    ctx.setLineDash([]); // Reset line dash
+    ctx.setLineDash([]);
 
     // 4. Equator and Prime Meridian Highlights
     ctx.strokeStyle = 'rgba(0, 242, 254, 0.22)';
@@ -177,24 +227,12 @@ export default function Globe3D() {
     const landStroke = '#00F2FE';
     drawLandmassRings(ctx, canvas.width, canvas.height, landFill, landStroke, 2.2, '#00F2FE');
 
-    // 6. Draw Subtle Cyber Nodes / Strategic Cities
+    // 6. Draw Strategic Global Cyber Nodes
     const strategicNodes = [
-      [-74.0, 40.7], // New York
-      [-122.4, 37.8], // San Francisco
-      [-0.1, 51.5], // London
-      [2.3, 48.9], // Paris
-      [13.4, 52.5], // Berlin
-      [37.6, 55.7], // Moscow
-      [55.3, 25.2], // Dubai
-      [77.2, 28.6], // New Delhi
-      [116.4, 39.9], // Beijing
-      [121.5, 31.2], // Shanghai
-      [139.7, 35.7], // Tokyo
-      [103.8, 1.3], // Singapore
-      [151.2, -33.9], // Sydney
-      [-43.2, -22.9], // Rio de Janeiro
-      [31.2, 30.0], // Cairo
-      [18.4, -33.9] // Cape Town
+      [-74.0, 40.7], [-122.4, 37.8], [-0.1, 51.5], [2.3, 48.9],
+      [13.4, 52.5], [37.6, 55.7], [55.3, 25.2], [77.2, 28.6],
+      [116.4, 39.9], [121.5, 31.2], [139.7, 35.7], [103.8, 1.3],
+      [151.2, -33.9], [-43.2, -22.9], [31.2, 30.0], [18.4, -33.9]
     ];
 
     ctx.fillStyle = '#00F2FE';
@@ -207,7 +245,6 @@ export default function Globe3D() {
       ctx.arc(x, y, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Outer target ring
       ctx.strokeStyle = 'rgba(0, 242, 254, 0.45)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -221,7 +258,7 @@ export default function Globe3D() {
     return texture;
   };
 
-  // Generate Satellite Reconnaissance Texture Mode using LAND_RINGS
+  // Generate Satellite Reconnaissance Texture Mode
   const getSatelliteTexture = () => {
     if (texturesCacheRef.current.satellite) {
       return texturesCacheRef.current.satellite;
@@ -232,11 +269,9 @@ export default function Globe3D() {
     canvas.height = 2048;
     const ctx = canvas.getContext('2d');
 
-    // Deep Oceanic Abyss
     ctx.fillStyle = '#010613';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Subtle Satellite Grid
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.06)';
     ctx.lineWidth = 1;
     for (let lat = -80; lat <= 80; lat += 20) {
@@ -254,7 +289,6 @@ export default function Globe3D() {
       ctx.stroke();
     }
 
-    // Draw Sat Continents using LAND_RINGS
     const satLandFill = '#0C1C33';
     const satLandStroke = '#1E3A8A';
     drawLandmassRings(ctx, canvas.width, canvas.height, satLandFill, satLandStroke, 1.8, '#1D4ED8');
@@ -266,7 +300,7 @@ export default function Globe3D() {
   };
 
   // Create Continent Typography Sprite
-  const createTextSprite = (text) => {
+  const createContinentSprite = (text) => {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 128;
@@ -276,7 +310,7 @@ export default function Globe3D() {
     ctx.fillStyle = '#CBD5E1';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.letterSpacing = '3px';
+    ctx.letterSpacing = '4px';
     ctx.shadowColor = 'rgba(0, 242, 254, 0.8)';
     ctx.shadowBlur = 12;
     ctx.fillText(text, 256, 64);
@@ -288,7 +322,69 @@ export default function Globe3D() {
       opacity: 0.82
     });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(40, 10, 1);
+    sprite.scale.set(38, 9.5, 1);
+    return sprite;
+  };
+
+  // Create Country / Nation Label Sprite (LOD 2)
+  const createCountrySprite = (text) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d');
+
+    // Translucent tactical pill box
+    ctx.fillStyle = 'rgba(6, 11, 24, 0.75)';
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(16, 16, 352, 64, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '800 24px "Inter", sans-serif';
+    ctx.fillStyle = '#00F2FE';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '2px';
+    ctx.shadowColor = 'rgba(0, 242, 254, 0.9)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(text, 192, 48);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.0
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(22, 5.5, 1);
+    return sprite;
+  };
+
+  // Create State / Provincial Regional Label Sprite (LOD 3)
+  const createStateSprite = (text) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    ctx.font = '700 18px "Inter", sans-serif';
+    ctx.fillStyle = '#E2E8F0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.9)';
+    ctx.shadowBlur = 6;
+    ctx.fillText(text, 128, 32);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.0
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(15, 3.8, 1);
     return sprite;
   };
 
@@ -404,23 +500,73 @@ export default function Globe3D() {
     orbitalRing.rotation.x = Math.PI / 2.3;
     globeGroup.add(orbitalRing);
 
-    // 7. Markers Group
+    // 7. Dynamic Vector Borders (Country & State LOD)
+    // Country Borders (Spherical Vector 3D LineSegments)
+    const countryBordersGeo = buildCurvedLineSegments(COUNTRY_BORDERS, 100.25);
+    const countryBordersMat = new THREE.LineBasicMaterial({
+      color: 0x00f2fe,
+      transparent: true,
+      opacity: 0.0,
+      linewidth: 1.5,
+      depthWrite: false
+    });
+    const countryBordersMesh = new THREE.LineSegments(countryBordersGeo, countryBordersMat);
+    globeGroup.add(countryBordersMesh);
+    countryBordersMeshRef.current = countryBordersMesh;
+    countryBordersMatRef.current = countryBordersMat;
+
+    // State / Province Borders (Spherical Vector 3D LineSegments)
+    const stateBordersGeo = buildCurvedLineSegments(STATE_BORDERS, 100.28);
+    const stateBordersMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.0,
+      linewidth: 1.2,
+      depthWrite: false
+    });
+    const stateBordersMesh = new THREE.LineSegments(stateBordersGeo, stateBordersMat);
+    globeGroup.add(stateBordersMesh);
+    stateBordersMeshRef.current = stateBordersMesh;
+    stateBordersMatRef.current = stateBordersMat;
+
+    // 8. Dynamic Labels Groups (Continent, Country, State)
+    // Continent Labels Group
+    const continentLabelsGroup = new THREE.Group();
+    globeGroup.add(continentLabelsGroup);
+    continentLabelsGroupRef.current = continentLabelsGroup;
+    CONTINENT_LABELS.forEach(lbl => {
+      const sprite = createContinentSprite(lbl.name);
+      const pos = latLngToVector3(lbl.lat, lbl.lng, 102.5);
+      sprite.position.copy(pos);
+      continentLabelsGroup.add(sprite);
+    });
+
+    // Country Labels Group (LOD 2)
+    const countryLabelsGroup = new THREE.Group();
+    globeGroup.add(countryLabelsGroup);
+    countryLabelsGroupRef.current = countryLabelsGroup;
+    COUNTRY_LABELS_LOD.forEach(lbl => {
+      const sprite = createCountrySprite(lbl.name);
+      const pos = latLngToVector3(lbl.lat, lbl.lng, 101.8);
+      sprite.position.copy(pos);
+      countryLabelsGroup.add(sprite);
+    });
+
+    // State / Province Labels Group (LOD 3)
+    const stateLabelsGroup = new THREE.Group();
+    globeGroup.add(stateLabelsGroup);
+    stateLabelsGroupRef.current = stateLabelsGroup;
+    STATE_LABELS_LOD.forEach(lbl => {
+      const sprite = createStateSprite(lbl.name);
+      const pos = latLngToVector3(lbl.lat, lbl.lng, 101.4);
+      sprite.position.copy(pos);
+      stateLabelsGroup.add(sprite);
+    });
+
+    // 9. Markers Group
     const markersGroup = new THREE.Group();
     globeGroup.add(markersGroup);
     markersGroupRef.current = markersGroup;
-
-    // 8. Continent Labels Group
-    const labelsGroup = new THREE.Group();
-    globeGroup.add(labelsGroup);
-    labelsGroupRef.current = labelsGroup;
-
-    // Add Continent Labels Sprites
-    CONTINENT_LABELS.forEach(lbl => {
-      const sprite = createTextSprite(lbl.name);
-      const pos = latLngToVector3(lbl.lat, lbl.lng, 102.5);
-      sprite.position.copy(pos);
-      labelsGroup.add(sprite);
-    });
 
     // Mouse Dragging & Hover Controls
     const onMouseDown = (e) => {
@@ -512,6 +658,7 @@ export default function Globe3D() {
     // Animation Loop
     let animationFrameId;
     const clock = new THREE.Clock();
+    let lastLodCheck = 0;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
@@ -532,7 +679,64 @@ export default function Globe3D() {
 
       // Camera distance interpolation
       currentDistanceRef.current += (targetDistanceRef.current - currentDistanceRef.current) * 0.1;
-      camera.position.z = currentDistanceRef.current;
+      const dist = currentDistanceRef.current;
+      camera.position.z = dist;
+
+      // ----------------------------------------------------
+      // DYNAMIC ZOOM-DEPENDENT LEVEL-OF-DETAIL (LOD) OPACITY
+      // ----------------------------------------------------
+      // 1. Country Borders: smoothly fade in between dist 210 and 165
+      const countryFactor = Math.max(0, Math.min(1, (215 - dist) / (215 - 165)));
+      const countryOpacity = countryFactor * 0.85;
+
+      if (countryBordersMatRef.current) {
+        countryBordersMatRef.current.opacity = countryOpacity;
+        countryBordersMatRef.current.visible = countryOpacity > 0.01;
+      }
+
+      if (countryLabelsGroupRef.current) {
+        countryLabelsGroupRef.current.children.forEach(sprite => {
+          sprite.material.opacity = countryFactor * 0.95;
+          sprite.visible = countryFactor > 0.05;
+        });
+      }
+
+      // 2. State / Provincial Borders: smoothly fade in when zooming in further (between 175 and 140)
+      const stateFactor = Math.max(0, Math.min(1, (175 - dist) / (175 - 145)));
+      const stateOpacity = stateFactor * 0.72;
+
+      if (stateBordersMatRef.current) {
+        stateBordersMatRef.current.opacity = stateOpacity;
+        stateBordersMatRef.current.visible = stateOpacity > 0.01;
+      }
+
+      if (stateLabelsGroupRef.current) {
+        stateLabelsGroupRef.current.children.forEach(sprite => {
+          sprite.material.opacity = stateFactor * 0.9;
+          sprite.visible = stateFactor > 0.05;
+        });
+      }
+
+      // 3. Continent Labels: fade out when zoomed in so they don't occlude regional borders
+      const continentFactor = Math.max(0, Math.min(1, (dist - 170) / (230 - 170)));
+      if (continentLabelsGroupRef.current) {
+        continentLabelsGroupRef.current.children.forEach(sprite => {
+          sprite.material.opacity = continentFactor * 0.82;
+          sprite.visible = continentFactor > 0.05;
+        });
+      }
+
+      // Periodic LOD HUD Status update (throttled to every 250ms)
+      if (elapsedTime - lastLodCheck > 0.25) {
+        lastLodCheck = elapsedTime;
+        if (dist <= 170) {
+          setZoomLodStatus('LOD 3 • STATE / PROVINCIAL REGIONS');
+        } else if (dist <= 210) {
+          setZoomLodStatus('LOD 2 • NATIONAL COUNTRY BORDERS');
+        } else {
+          setZoomLodStatus('LOD 1 • GLOBAL STRATEGIC VIEW');
+        }
+      }
 
       // Pulse Radar Rings Animation
       pulseRingsRef.current.forEach((ring) => {
@@ -657,7 +861,7 @@ export default function Globe3D() {
     const phi = (globeFlyTo.lat * Math.PI) / 180;
     const theta = ((globeFlyTo.lng + 90) * Math.PI) / 180;
     targetRotationRef.current = { x: phi, y: -theta };
-    targetDistanceRef.current = 180;
+    targetDistanceRef.current = 160; // Zoom in to country level
   }, [globeFlyTo]);
 
   return (
@@ -758,6 +962,33 @@ export default function Globe3D() {
         </button>
       </div>
 
+      {/* TOP-CENTER TACTICAL ZOOM LEVEL-OF-DETAIL BADGE */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '118px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 25,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(8, 14, 28, 0.88)',
+          border: '1px solid var(--border-cyan)',
+          borderRadius: 'var(--radius-full)',
+          padding: '5px 14px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 242, 254, 0.15)',
+          backdropFilter: 'blur(10px)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.68rem',
+          color: 'var(--accent-cyan)',
+          letterSpacing: '0.05em'
+        }}
+      >
+        <Layers size={13} color="var(--accent-cyan)" />
+        <span style={{ fontWeight: '700' }}>{zoomLodStatus}</span>
+      </div>
+
       {/* TOP-RIGHT MAP CONTROLS: [ + | - | ⌖ | ⏸ / ▶ ] */}
       <div
         style={{
@@ -789,7 +1020,7 @@ export default function Globe3D() {
             justifyContent: 'center',
             borderRadius: 'var(--radius-sm)'
           }}
-          title="Zoom In"
+          title="Zoom In (Reveals Country & State Borders)"
         >
           <Plus size={16} />
         </button>
@@ -852,7 +1083,7 @@ export default function Globe3D() {
             borderRadius: 'var(--radius-sm)',
             transition: 'all 0.15s'
           }}
-          title={autoRotate ? 'Pause Earth Rotation (Auto-Spin is ON)' : 'Resume Earth Rotation (Auto-Spin is PAUSED)'}
+          title={autoRotate ? 'Pause Earth Rotation' : 'Resume Earth Rotation'}
         >
           {autoRotate ? <Pause size={15} /> : <Play size={15} />}
         </button>
