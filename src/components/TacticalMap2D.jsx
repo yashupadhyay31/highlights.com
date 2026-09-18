@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { CATEGORIES } from '../data/mockEvents';
 import { LAND_RINGS } from '../data/landRings';
+import { COUNTRY_BORDERS } from '../data/bordersData';
 import { Plus, Minus, Crosshair } from 'lucide-react';
 
 export default function TacticalMap2D() {
@@ -42,6 +43,26 @@ export default function TacticalMap2D() {
         prevLng = lng;
       });
       path += 'Z ';
+      return path;
+    }).join(' ');
+  }, []);
+
+  // Convert COUNTRY_BORDERS to SVG path data string
+  const countryBordersSvgPath = useMemo(() => {
+    return COUNTRY_BORDERS.map(pathArr => {
+      if (!pathArr || pathArr.length < 2) return '';
+      let path = '';
+      let prevLng = null;
+      pathArr.forEach(([lng, lat], i) => {
+        const x = ((lng + 180) / 360) * 1000;
+        const y = ((90 - lat) / 180) * 500;
+        if (i === 0 || (prevLng !== null && Math.abs(lng - prevLng) > 180)) {
+          path += `M ${x.toFixed(1)} ${y.toFixed(1)} `;
+        } else {
+          path += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+        }
+        prevLng = lng;
+      });
       return path;
     }).join(' ');
   }, []);
@@ -163,7 +184,7 @@ export default function TacticalMap2D() {
           boxShadow: 'inset 0 0 40px rgba(0, 0, 0, 0.8)'
         }}
       >
-        {/* SVG Landmass Outlines from landRings.js */}
+        {/* SVG Landmass Outlines & Real Country Borders from Natural Earth */}
         <svg
           viewBox="0 0 1000 500"
           preserveAspectRatio="none"
@@ -172,16 +193,25 @@ export default function TacticalMap2D() {
             inset: 0,
             width: '100%',
             height: '100%',
-            opacity: 0.88,
+            opacity: 0.92,
             pointerEvents: 'none'
           }}
         >
+          {/* Landmass Base */}
           <path
             d={svgPathData}
             fill="#091B33"
             stroke="#00F2FE"
-            strokeWidth="0.75"
-            strokeOpacity="0.75"
+            strokeWidth="0.7"
+            strokeOpacity="0.8"
+          />
+          {/* Sovereign Country Boundaries */}
+          <path
+            d={countryBordersSvgPath}
+            fill="none"
+            stroke="rgba(241, 245, 249, 0.75)"
+            strokeWidth="0.6"
+            strokeDasharray="2,2"
           />
         </svg>
 
