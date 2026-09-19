@@ -685,13 +685,13 @@ export default function Globe3D() {
       // ----------------------------------------------------
       // DYNAMIC ZOOM-DEPENDENT LEVEL-OF-DETAIL (LOD) OPACITY
       // ----------------------------------------------------
-      // 1. Country Borders: smoothly fade in between dist 210 and 165
-      const countryFactor = Math.max(0, Math.min(1, (215 - dist) / (215 - 165)));
-      const countryOpacity = countryFactor * 0.85;
+      // 1. Country Borders: always visible, brighten as zoom increases
+      const countryFactor = Math.max(0.55, Math.min(1, (420 - dist) / (420 - 165)));
+      const countryOpacity = countryFactor * 0.9;
 
       if (countryBordersMatRef.current) {
         countryBordersMatRef.current.opacity = countryOpacity;
-        countryBordersMatRef.current.visible = countryOpacity > 0.01;
+        countryBordersMatRef.current.visible = true;
       }
 
       if (countryLabelsGroupRef.current) {
@@ -962,32 +962,7 @@ export default function Globe3D() {
         </button>
       </div>
 
-      {/* TOP-CENTER TACTICAL ZOOM LEVEL-OF-DETAIL BADGE */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '118px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 25,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(8, 14, 28, 0.88)',
-          border: '1px solid var(--border-cyan)',
-          borderRadius: 'var(--radius-full)',
-          padding: '5px 14px',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 242, 254, 0.15)',
-          backdropFilter: 'blur(10px)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '0.68rem',
-          color: 'var(--accent-cyan)',
-          letterSpacing: '0.05em'
-        }}
-      >
-        <Layers size={13} color="var(--accent-cyan)" />
-        <span style={{ fontWeight: '700' }}>{zoomLodStatus}</span>
-      </div>
+
 
       {/* TOP-RIGHT MAP CONTROLS: [ + | - | ⌖ | ⏸ / ▶ ] */}
       <div
