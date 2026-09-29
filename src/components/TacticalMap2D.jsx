@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { CATEGORIES } from '../data/mockEvents';
+import { OCEAN_LABELS } from '../data/mockEvents';
 import { LAND_RINGS } from '../data/landRings';
-import { COUNTRY_BORDERS } from '../data/bordersData';
+import { COUNTRY_BORDERS, STATE_BORDERS } from '../data/bordersData';
 import { Plus, Minus, Crosshair } from 'lucide-react';
 
 export default function TacticalMap2D() {
@@ -50,6 +51,26 @@ export default function TacticalMap2D() {
   // Convert COUNTRY_BORDERS to SVG path data string
   const countryBordersSvgPath = useMemo(() => {
     return COUNTRY_BORDERS.map(pathArr => {
+      if (!pathArr || pathArr.length < 2) return '';
+      let path = '';
+      let prevLng = null;
+      pathArr.forEach(([lng, lat], i) => {
+        const x = ((lng + 180) / 360) * 1000;
+        const y = ((90 - lat) / 180) * 500;
+        if (i === 0 || (prevLng !== null && Math.abs(lng - prevLng) > 180)) {
+          path += `M ${x.toFixed(1)} ${y.toFixed(1)} `;
+        } else {
+          path += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
+        }
+        prevLng = lng;
+      });
+      return path;
+    }).join(' ');
+  }, []);
+
+  // Convert STATE_BORDERS to SVG path data string
+  const stateBordersSvgPath = useMemo(() => {
+    return STATE_BORDERS.map(pathArr => {
       if (!pathArr || pathArr.length < 2) return '';
       let path = '';
       let prevLng = null;
@@ -213,6 +234,52 @@ export default function TacticalMap2D() {
             strokeWidth="0.6"
             strokeDasharray="2,2"
           />
+          {/* State & Provincial Internal Boundaries (LOD 3) */}
+          <path
+            d={stateBordersSvgPath}
+            fill="none"
+            stroke="rgba(56, 189, 248, 0.6)"
+            strokeWidth="0.4"
+            strokeDasharray="1,1.5"
+          />
+        </svg>
+
+        {/* Ocean Labels — italic sky-blue, same coordinate system as landmass SVG */}
+        <svg
+          viewBox="0 0 1000 500"
+          preserveAspectRatio="none"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            overflow: 'visible'
+          }}
+        >
+          {OCEAN_LABELS.map(({ name, lat, lng }) => {
+            const x = ((lng + 180) / 360) * 1000;
+            const y = ((90 - lat) / 180) * 500;
+            return (
+              <text
+                key={name}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontFamily="'Inter', sans-serif"
+                fontSize="13"
+                fontStyle="italic"
+                fontWeight="700"
+                letterSpacing="2"
+                fill="#7DD3FC"
+                opacity="0.72"
+                style={{ filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.9))' }}
+              >
+                {name}
+              </text>
+            );
+          })}
         </svg>
 
         {/* Equator & Prime Meridian Grid Marker */}

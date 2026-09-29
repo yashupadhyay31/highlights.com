@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { INITIAL_EVENTS, CATEGORIES, REPORTER_TIERS, MARKETS_DATA } from '../data/mockEvents';
+import { fetchLiveNews } from '../data/newsService';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [events, setEvents] = useState(INITIAL_EVENTS);
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [newsStatus, setNewsStatus] = useState({ loading: false, error: null, lastUpdated: null });
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [hoveredEvent, setHoveredEvent] = useState(null); // { event, screenX, screenY }
   const [activeRole, setActiveRole] = useState('guest'); // 'guest' | 'user' | 'reporter' | 'admin'
@@ -23,6 +26,32 @@ export function AppProvider({ children }) {
   const [focusedIncident, setFocusedIncident] = useState(INITIAL_EVENTS[0] || null); // Middle East Escalation Card
   const [isTickerPaused, setIsTickerPaused] = useState(false);
   
+  // ── Live News Integration ───────────────────────────────────────────────
+  const loadLiveNews = useCallback(async () => {
+    setNewsStatus(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const freshArticles = await fetchLiveNews({ language: 'en', limit: 30 });
+      setLiveEvents(freshArticles);
+      setNewsStatus({ loading: false, error: null, lastUpdated: new Date() });
+    } catch (err) {
+      console.error('[Highlights] Live news fetch failed:', err);
+      setNewsStatus(prev => ({ ...prev, loading: false, error: err.message }));
+    }
+  }, []);
+
+  // Fetch on mount, then refresh every 5 minutes
+  useEffect(() => {
+    loadLiveNews();
+    const interval = setInterval(loadLiveNews, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadLiveNews]);
+
+  // Use ONLY live events when API is healthy; fall back to mock when API errors or returns nothing
+  const allEvents = useMemo(() => {
+    const apiWorking = !newsStatus.error && liveEvents.length > 0;
+    return apiWorking ? liveEvents : events;
+  }, [liveEvents, events, newsStatus.error]);
+
   // Real-Time Simulated Markets Data
   const [marketData, setMarketData] = useState(MARKETS_DATA);
 
@@ -155,7 +184,7 @@ export function AppProvider({ children }) {
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
-    return events.filter(ev => {
+    return allEvents.filter(ev => {
       // Watchlist filter if activeNavTab === 'watchlist'
       if (activeNavTab === 'watchlist' && !watchlist.includes(ev.id)) {
         return false;
@@ -214,12 +243,12 @@ export function AppProvider({ children }) {
 
       return true;
     });
-  }, [events, activeNavTab, watchlist, selectedRegion, activeCategory, activeSeverity, verificationFilter, searchQuery, userLocation]);
+  }, [allEvents, activeNavTab, watchlist, selectedRegion, activeCategory, activeSeverity, verificationFilter, searchQuery, userLocation]);
 
   // Breaking / Hot Alerts
   const hotAlerts = useMemo(() => {
-    return events.filter(e => e.isHotAlert);
-  }, [events]);
+    return allEvents.filter(e => e.isHotAlert);
+  }, [allEvents]);
 
   // Handle Event Selection & Camera Focus
   const handleSelectEvent = (event) => {
@@ -359,9 +388,11 @@ export function AppProvider({ children }) {
   };
 
   const value = {
-    events,
+    events: allEvents,
     filteredEvents,
     hotAlerts,
+    newsStatus,
+    refreshLiveNews: loadLiveNews,
     selectedEvent,
     setSelectedEvent,
     hoveredEvent,

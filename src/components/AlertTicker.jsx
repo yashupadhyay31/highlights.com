@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Pause, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pause, Play, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 
 export default function AlertTicker() {
-  const { events, handleSelectEvent, isTickerPaused, setIsTickerPaused } = useApp();
+  const { events, handleSelectEvent, isTickerPaused, setIsTickerPaused, newsStatus, refreshLiveNews } = useApp();
   const [isHovered, setIsHovered] = useState(false);
   const marqueeRef = useRef(null);
 
@@ -51,44 +51,82 @@ export default function AlertTicker() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Red LIVE NEWS Badge */}
+      {/* Red LIVE NEWS Badge + API status */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '7px',
           padding: '3px 12px 3px 10px',
-          background: 'rgba(239, 68, 68, 0.16)',
-          border: '1px solid rgba(239, 68, 68, 0.45)',
+          background: newsStatus.error
+            ? 'rgba(239,68,68,0.10)'
+            : newsStatus.loading
+            ? 'rgba(251,191,36,0.12)'
+            : 'rgba(239, 68, 68, 0.16)',
+          border: newsStatus.error
+            ? '1px solid rgba(239,68,68,0.35)'
+            : newsStatus.loading
+            ? '1px solid rgba(251,191,36,0.4)'
+            : '1px solid rgba(239, 68, 68, 0.45)',
           borderRadius: 'var(--radius-full)',
           marginRight: '16px',
           flexShrink: 0,
-          boxShadow: '0 0 12px rgba(239, 68, 68, 0.25)'
+          boxShadow: newsStatus.loading
+            ? '0 0 12px rgba(251,191,36,0.25)'
+            : '0 0 12px rgba(239, 68, 68, 0.25)'
         }}
       >
-        <span
-          className="live-indicator"
-          style={{
-            display: 'inline-block',
-            width: '7px',
-            height: '7px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--accent-crimson)',
-            boxShadow: '0 0 8px #EF4444'
-          }}
-        />
+        {newsStatus.loading ? (
+          <RotateCw
+            size={8}
+            style={{ color: '#FBB040', animation: 'spin 1s linear infinite' }}
+          />
+        ) : (
+          <span
+            className={newsStatus.error ? '' : 'live-indicator'}
+            style={{
+              display: 'inline-block',
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: newsStatus.error ? '#EF4444' : 'var(--accent-crimson)',
+              boxShadow: newsStatus.error ? 'none' : '0 0 8px #EF4444'
+            }}
+          />
+        )}
         <span
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '0.72rem',
             fontWeight: '800',
             letterSpacing: '0.08em',
-            color: '#FECACA',
+            color: newsStatus.loading ? '#FDE68A' : '#FECACA',
             textTransform: 'uppercase'
           }}
         >
-          LIVE NEWS
+          {newsStatus.loading ? 'UPDATING…' : newsStatus.error ? 'WIRE ERR' : 'LIVE NEWS'}
         </span>
+        {/* Manual refresh button */}
+        {!newsStatus.loading && (
+          <button
+            onClick={refreshLiveNews}
+            title="Refresh live news"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0 0 0 4px',
+              display: 'flex',
+              alignItems: 'center',
+              color: 'rgba(255,255,255,0.45)',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.45)'}
+          >
+            <RotateCw size={10} />
+          </button>
+        )}
       </div>
 
       {/* Horizontal Continuous Scrolling Marquee Container */}

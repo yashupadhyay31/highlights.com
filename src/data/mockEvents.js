@@ -1553,6 +1553,14 @@ export const CONTINENT_LABELS = [
   { name: 'MIDDLE EAST', lat: 27, lng: 44 }
 ];
 
+export const OCEAN_LABELS = [
+  { name: 'PACIFIC OCEAN',   lat:  5,   lng: -155 },
+  { name: 'ATLANTIC OCEAN',  lat: 10,   lng:  -30 },
+  { name: 'INDIAN OCEAN',    lat:  -5,  lng:   76 },
+  { name: 'ARCTIC OCEAN',    lat:  82,  lng:    0 },
+  { name: 'SOUTHERN OCEAN',  lat: -62,  lng:    0 }
+];
+
 // Strategic Briefings Data
 export const BRIEFINGS_DATA = [
   {

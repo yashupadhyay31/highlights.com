@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useApp } from '../context/AppContext';
-import { CATEGORIES, CONTINENT_LABELS } from '../data/mockEvents';
+import { CATEGORIES, CONTINENT_LABELS, OCEAN_LABELS } from '../data/mockEvents';
 import { LAND_RINGS } from '../data/landRings';
 import {
   COUNTRY_BORDERS,
@@ -42,6 +42,7 @@ export default function Globe3D() {
   const globeGroupRef = useRef(null);
   const markersGroupRef = useRef(null);
   const continentLabelsGroupRef = useRef(null);
+  const oceanLabelsGroupRef = useRef(null);
   const countryLabelsGroupRef = useRef(null);
   const stateLabelsGroupRef = useRef(null);
   const countryBordersMeshRef = useRef(null);
@@ -326,6 +327,33 @@ export default function Globe3D() {
     return sprite;
   };
 
+  // Create Ocean Label Sprite — italic aqua blue, same LOD system as continent labels
+  const createOceanSprite = (text) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    ctx.font = 'italic 700 26px "Inter", sans-serif';
+    ctx.fillStyle = '#7DD3FC';   // sky-blue ocean tint
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '3px';
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.85)';
+    ctx.shadowBlur = 14;
+    ctx.fillText(text, 256, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.75
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(40, 10, 1);
+    return sprite;
+  };
+
   // Create Country / Nation Label Sprite (LOD 2)
   const createCountrySprite = (text) => {
     const canvas = document.createElement('canvas');
@@ -529,7 +557,7 @@ export default function Globe3D() {
     stateBordersMeshRef.current = stateBordersMesh;
     stateBordersMatRef.current = stateBordersMat;
 
-    // 8. Dynamic Labels Groups (Continent, Country, State)
+    // 8. Dynamic Labels Groups (Continent, Ocean, Country, State)
     // Continent Labels Group
     const continentLabelsGroup = new THREE.Group();
     globeGroup.add(continentLabelsGroup);
@@ -539,6 +567,17 @@ export default function Globe3D() {
       const pos = latLngToVector3(lbl.lat, lbl.lng, 102.5);
       sprite.position.copy(pos);
       continentLabelsGroup.add(sprite);
+    });
+
+    // Ocean Labels Group (same LOD level as continents)
+    const oceanLabelsGroup = new THREE.Group();
+    globeGroup.add(oceanLabelsGroup);
+    oceanLabelsGroupRef.current = oceanLabelsGroup;
+    OCEAN_LABELS.forEach(lbl => {
+      const sprite = createOceanSprite(lbl.name);
+      const pos = latLngToVector3(lbl.lat, lbl.lng, 102.5);
+      sprite.position.copy(pos);
+      oceanLabelsGroup.add(sprite);
     });
 
     // Country Labels Group (LOD 2)
@@ -722,6 +761,14 @@ export default function Globe3D() {
       if (continentLabelsGroupRef.current) {
         continentLabelsGroupRef.current.children.forEach(sprite => {
           sprite.material.opacity = continentFactor * 0.82;
+          sprite.visible = continentFactor > 0.05;
+        });
+      }
+
+      // 4. Ocean Labels: same fade curve as continent labels
+      if (oceanLabelsGroupRef.current) {
+        oceanLabelsGroupRef.current.children.forEach(sprite => {
+          sprite.material.opacity = continentFactor * 0.72;
           sprite.visible = continentFactor > 0.05;
         });
       }
