@@ -182,6 +182,24 @@ function articleToEvent(article, index) {
  * @returns {Promise<Array>} Array of event objects shaped for the app
  */
 export async function fetchLiveNews({ language = 'en', keywords = '', limit = 30 } = {}) {
+  // 1. First priority: Check Backend Express + MongoDB Atlas (/api/events/live)
+  try {
+    const backendRes = await fetch(`/api/events/live?limit=${limit}`);
+    if (backendRes.ok) {
+      const dbArticles = await backendRes.json();
+      if (Array.isArray(dbArticles) && dbArticles.length > 0) {
+        return dbArticles.map(doc => ({
+          ...doc,
+          id: doc._id || doc.id || doc.externalId,
+          timestamp: doc.publishedAt ? relativeTime(doc.publishedAt) : 'recently'
+        }));
+      }
+    }
+  } catch (backendErr) {
+    console.warn('[Highlights Frontend] Backend live endpoint unavailable, trying direct API:', backendErr.message);
+  }
+
+  // 2. Direct Currents API fallback via Vite proxy
   const params = new URLSearchParams({ language, apiKey: API_KEY });
   if (keywords) params.set('keywords', keywords);
 

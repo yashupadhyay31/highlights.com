@@ -1,6 +1,18 @@
 // server/routes/markets.js
 const router = require('express').Router();
 const Market = require('../models/Market');
+const { syncMarketIndices, getLatestStockIndices } = require('../services/marketService');
+
+// ── GET /api/markets/indices ── live global stock indices from Twelve Data ────
+router.get('/indices', async (req, res, next) => {
+  try {
+    const force = req.query.force === 'true';
+    const result = await syncMarketIndices(force);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── GET /api/markets/latest ── latest tick per symbol ─────────────────────────
 router.get('/latest', async (req, res, next) => {
@@ -12,6 +24,12 @@ router.get('/latest', async (req, res, next) => {
       { $replaceRoot: { newRoot: '$tick' } },
       { $sort: { type: 1, symbol: 1 } }
     ]);
+
+    if (!ticks || ticks.length === 0) {
+      // Fallback to in-memory cached indices
+      return res.json(getLatestStockIndices());
+    }
+
     res.json(ticks);
   } catch (err) { next(err); }
 });

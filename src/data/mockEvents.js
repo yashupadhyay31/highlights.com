@@ -1463,13 +1463,21 @@ export const TOP_PREDICTIONS = [
 // Defense Stocks, Commodities & Forex Data matching Highlights UI
 export const MARKETS_DATA = {
   stocks: [
-    { name: 'S&P 500 (US)', price: '6,653.98', rawPrice: 6653.98, change: '+0.82%', isPositive: true },
-    { name: 'NASDAQ (US)', price: '22,484.72', rawPrice: 22484.72, change: '+1.14%', isPositive: true },
-    { name: 'Dow Jones (US)', price: '46,315.27', rawPrice: 46315.27, change: '+0.62%', isPositive: true },
-    { name: 'FTSE 100 (UK)', price: '9,193.24', rawPrice: 9193.24, change: '+0.41%', isPositive: true },
-    { name: 'DAX (Germany)', price: '23,510.48', rawPrice: 23510.48, change: '+0.58%', isPositive: true },
-    { name: 'Nikkei 225 (Japan)', price: '45,839.24', rawPrice: 45839.24, change: '+1.02%', isPositive: true },
-    { name: 'Hang Seng (HK)', price: '17,826.63', rawPrice: 17826.63, change: '-0.36%', isPositive: false }
+    { symbol: 'SPX', name: 'S&P 500 (US)', price: '5,762.48', rawPrice: 5762.48, change: '+0.82%', isPositive: true },
+    { symbol: 'IXIC', name: 'NASDAQ (US)', price: '18,189.96', rawPrice: 18189.96, change: '+1.14%', isPositive: true },
+    { symbol: 'DJI', name: 'Dow Jones (US)', price: '42,313.00', rawPrice: 42313.00, change: '+0.62%', isPositive: true },
+    { symbol: 'FTSE', name: 'FTSE 100 (UK)', price: '8,282.76', rawPrice: 8282.76, change: '+0.41%', isPositive: true },
+    { symbol: 'GDAXI', name: 'DAX (Germany)', price: '19,324.93', rawPrice: 19324.93, change: '+0.58%', isPositive: true },
+    { symbol: 'N225', name: 'Nikkei 225 (Japan)', price: '38,925.63', rawPrice: 38925.63, change: '+1.02%', isPositive: true },
+    { symbol: 'HSI', name: 'Hang Seng (HK)', price: '21,133.68', rawPrice: 21133.68, change: '-0.36%', isPositive: false },
+    { symbol: 'NIFTY', name: 'Nifty 50 (India)', price: '25,810.85', rawPrice: 25810.85, change: '+0.74%', isPositive: true },
+    { symbol: 'SENSEX', name: 'BSE Sensex (India)', price: '84,544.30', rawPrice: 84544.30, change: '+0.68%', isPositive: true },
+    { symbol: 'FCHI', name: 'CAC 40 (France)', price: '7,635.75', rawPrice: 7635.75, change: '+0.35%', isPositive: true },
+    { symbol: 'STOXX50E', name: 'Euro Stoxx 50 (EU)', price: '5,000.45', rawPrice: 5000.45, change: '+0.49%', isPositive: true },
+    { symbol: 'AXJO', name: 'ASX 200 (Australia)', price: '8,212.40', rawPrice: 8212.40, change: '+0.28%', isPositive: true },
+    { symbol: 'TSX', name: 'S&P/TSX (Canada)', price: '24,033.83', rawPrice: 24033.83, change: '+0.52%', isPositive: true },
+    { symbol: 'KS11', name: 'KOSPI (South Korea)', price: '2,593.27', rawPrice: 2593.27, change: '+0.31%', isPositive: true },
+    { symbol: '000001', name: 'Shanghai Comp (China)', price: '3,087.53', rawPrice: 3087.53, change: '+1.85%', isPositive: true }
   ],
   commodities: [
     { name: 'Gold', icon: 'Coins', price: '4,389.50', rawPrice: 4389.50, change: '+1.31%', isPositive: true, color: '#F59E0B' },

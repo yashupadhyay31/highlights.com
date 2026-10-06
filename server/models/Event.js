@@ -32,8 +32,8 @@ const ReporterRefSchema = new mongoose.Schema({
 const EventSchema = new mongoose.Schema({
   // Identity
   externalId:  { type: String, index: true },   // Currents API article id
-  title:       { type: String, required: true, index: 'text' },
-  summary:     { type: String, index: 'text' },
+  title:       { type: String, required: true },
+  summary:     { type: String },
 
   // Classification
   category:    {

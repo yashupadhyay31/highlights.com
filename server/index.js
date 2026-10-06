@@ -1,13 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // server/index.js  –  Highlights.com Express + MongoDB API Server
 // ─────────────────────────────────────────────────────────────────────────────
+const path       = require('path');
 const express    = require('express');
 const mongoose   = require('mongoose');
 const cors       = require('cors');
 const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
-require('dotenv').config({ path: '../.env' });   // reads root .env
 
+// Support running from highlights.com or highlights.com/server
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+const { syncCurrentsNews } = require('./services/newsService');
 const eventsRouter   = require('./routes/events');
 const usersRouter    = require('./routes/users');
 const votesRouter    = require('./routes/votes');
@@ -59,24 +64,51 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-// ── MongoDB Connection ────────────────────────────────────────────────────────
+// ── Start Express Server & MongoDB Connection ───────────────────────────────
+const server = app.listen(PORT, () => {
+  console.log(`🚀  Highlights API server running on http://localhost:${PORT}`);
+  console.log(`    Health:  http://localhost:${PORT}/api/health`);
+  console.log(`    Sync:    POST http://localhost:${PORT}/api/events/sync`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌  Port ${PORT} is already in use. Please stop the other process or set SERVER_PORT in .env.`);
+  } else {
+    console.error('❌  Server error:', err.message);
+  }
+});
+
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
-  console.error('❌  MONGO_URI is not set in .env — please add it and restart.');
-  process.exit(1);
-}
+  console.warn('⚠️   MONGO_URI is not set in .env. Server will run with database features disabled.');
+} else {
+  const connectDB = async () => {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        dbName: 'highlightsDB',
+        serverSelectionTimeoutMS: 5000 // Timeout faster for clear feedback
+      });
+      console.log('✅  MongoDB Atlas connected — highlightsDB');
 
-mongoose.connect(MONGO_URI, {
-  dbName: 'highlightsDB'
-})
-.then(() => {
-  console.log('✅  MongoDB Atlas connected — highlightsDB');
-  app.listen(PORT, () => {
-    console.log(`🚀  Highlights API server running on http://localhost:${PORT}`);
-    console.log(`    Health:  http://localhost:${PORT}/api/health`);
-  });
-})
-.catch(err => {
-  console.error('❌  MongoDB connection failed:', err.message);
-  process.exit(1);
-});
+      // Ingest latest live news into MongoDB on startup
+      syncCurrentsNews({ limit: 30 })
+        .catch(err => console.warn('[NewsService Startup]', err.message));
+
+      // Automated periodic sync every 15 minutes
+      setInterval(() => {
+        syncCurrentsNews({ limit: 30 })
+          .catch(err => console.warn('[NewsService Scheduled]', err.message));
+      }, 15 * 60 * 1000);
+    } catch (err) {
+      console.error('❌  MongoDB Atlas connection failed:', err.message);
+      console.error('👉  Atlas Troubleshooting Checklist:');
+      console.error('    1. IP Whitelist: Go to MongoDB Atlas -> Network Access -> Add IP -> "Allow Access From Anywhere" (0.0.0.0/0).');
+      console.error('    2. Database User: Ensure user "yashupadhyay" exists under Atlas -> Database Access with read/write privileges.');
+      console.error('    3. Cluster Status: Check if your cluster is paused or active in MongoDB Atlas.');
+      console.error('    (Server is still running at http://localhost:' + PORT + ' to allow retrying...)');
+    }
+  };
+
+  connectDB();
+}

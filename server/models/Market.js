@@ -9,7 +9,7 @@ const TickSchema = new mongoose.Schema({
   change:     String,    // e.g. "+1.23%"
   isPositive: Boolean,
   type:       { type: String, enum: ['stock', 'commodity', 'forex'], required: true, index: true },
-  recordedAt: { type: Date, default: Date.now, index: true }
+  recordedAt: { type: Date, default: Date.now }
 }, {
   versionKey: false
 });

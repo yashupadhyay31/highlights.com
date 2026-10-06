@@ -1,7 +1,42 @@
-// server/routes/events.js
-const router = require('express').Router();
-const Event  = require('../models/Event');
+const mongoose = require('mongoose');
+const router   = require('express').Router();
+const Event    = require('../models/Event');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { syncCurrentsNews } = require('../services/newsService');
+
+// ── GET & POST /api/events/sync ── trigger Currents API sync into MongoDB Atlas ──
+const handleSync = async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit || req.body?.limit || 30);
+    const force = req.query.force === 'true' || req.body?.force === true;
+    const result = await syncCurrentsNews({ limit, force });
+    res.json(result);
+  } catch (err) { next(err); }
+};
+router.get('/sync', handleSync);
+router.post('/sync', handleSync);
+
+// ── GET /api/events/live ── get latest live news events from MongoDB ─────────
+router.get('/live', async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit || 30);
+    let liveEvents = await Event.find({ isLive: true })
+      .sort({ publishedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    // If no live events in DB yet, attempt initial sync
+    if (liveEvents.length === 0) {
+      await syncCurrentsNews({ limit });
+      liveEvents = await Event.find({ isLive: true })
+        .sort({ publishedAt: -1 })
+        .limit(limit)
+        .lean();
+    }
+
+    res.json(liveEvents);
+  } catch (err) { next(err); }
+});
 
 // ── GET /api/events ── list with filters, pagination ──────────────────────────
 router.get('/', async (req, res, next) => {
@@ -42,10 +77,17 @@ router.get('/hot', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── GET /api/events/:id ── single event ───────────────────────────────────────
+// ── GET /api/events/:id ── single event (by ObjectId or externalId) ─────────
 router.get('/:id', async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id).lean();
+    const { id } = req.params;
+    let event = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      event = await Event.findById(id).lean();
+    }
+    if (!event) {
+      event = await Event.findOne({ externalId: id }).lean();
+    }
     if (!event) return res.status(404).json({ error: 'Event not found' });
     res.json(event);
   } catch (err) { next(err); }

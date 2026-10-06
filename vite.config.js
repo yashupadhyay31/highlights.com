@@ -19,6 +19,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
         rewrite: (path) => path.replace(/^\/currents-api/, '')
+      },
+      // /twelve-data-api/* → https://api.twelvedata.com/*
+      '/twelve-data-api': {
+        target: 'https://api.twelvedata.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/twelve-data-api/, '')
       }
     }
   }
