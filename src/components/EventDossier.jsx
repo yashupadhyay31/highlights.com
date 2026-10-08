@@ -600,8 +600,8 @@ export default function EventDossier() {
           </div>
         </div>
 
-        {/* Source Verification Links */}
-        {selectedEvent.evidence?.sources && selectedEvent.evidence.sources.length > 0 && (
+        {/* Source Verification Links & Multi-Outlet Cluster Citations */}
+        {((selectedEvent.sources && selectedEvent.sources.length > 0) || (selectedEvent.evidence?.sources && selectedEvent.evidence.sources.length > 0)) && (
           <div style={{ marginBottom: '22px' }}>
             <div
               style={{
@@ -609,13 +609,19 @@ export default function EventDossier() {
                 fontSize: '0.7rem',
                 color: 'var(--text-muted)',
                 marginBottom: '8px',
-                letterSpacing: '0.06em'
+                letterSpacing: '0.06em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
               }}
             >
-              VERIFIED CITATIONS & SENSORS
+              <span>VERIFIED CITATIONS & MULTI-OUTLET CLUSTER</span>
+              <span style={{ color: 'var(--accent-cyan)' }}>
+                {(selectedEvent.sources || selectedEvent.evidence?.sources || []).length} OUTLETS
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {selectedEvent.evidence.sources.map((src, i) => (
+              {(selectedEvent.sources || selectedEvent.evidence?.sources || []).map((src, i) => (
                 <div
                   key={i}
                   style={{
@@ -629,17 +635,32 @@ export default function EventDossier() {
                     fontSize: '0.75rem'
                   }}
                 >
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{src.name}</span>
-                  <span
-                    className="tactical-badge"
-                    style={{
-                      fontSize: '0.62rem',
-                      borderColor: 'var(--border-subtle)',
-                      color: 'var(--accent-cyan)'
-                    }}
-                  >
-                    {src.type}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle2 size={13} color="var(--accent-emerald)" />
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{src.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      className="tactical-badge"
+                      style={{
+                        fontSize: '0.62rem',
+                        borderColor: 'var(--border-subtle)',
+                        color: 'var(--accent-cyan)'
+                      }}
+                    >
+                      {src.type || 'Wire'}
+                    </span>
+                    {src.url && (
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

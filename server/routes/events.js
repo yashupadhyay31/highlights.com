@@ -3,6 +3,8 @@ const router   = require('express').Router();
 const Event    = require('../models/Event');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { syncCurrentsNews } = require('../services/newsService');
+const { deduplicateEvents } = require('../services/deduplicationService');
+const { syncSocialFirehose } = require('../services/firehoseService');
 
 // ── GET & POST /api/events/sync ── trigger Currents API sync into MongoDB Atlas ──
 const handleSync = async (req, res, next) => {
@@ -15,6 +17,35 @@ const handleSync = async (req, res, next) => {
 };
 router.get('/sync', handleSync);
 router.post('/sync', handleSync);
+
+// ── GET & POST /api/events/firehose/sync ── trigger RSS/Telegram/Twitter ingestion ──
+const handleFirehoseSync = async (_req, res, next) => {
+  try {
+    const result = await syncSocialFirehose();
+    res.json(result);
+  } catch (err) { next(err); }
+};
+router.get('/firehose/sync', handleFirehoseSync);
+router.post('/firehose/sync', handleFirehoseSync);
+
+// ── GET /api/events/firehose ── retrieve firehose events ──
+router.get('/firehose', async (req, res, next) => {
+  try {
+    const limit = Number(req.query.limit || 30);
+    const events = await Event.find({ tags: 'firehose' }).sort({ publishedAt: -1 }).limit(limit).lean();
+    res.json(events);
+  } catch (err) { next(err); }
+});
+
+// ── GET & POST /api/events/deduplicate ── trigger AI cluster merging manually ──
+const handleDeduplicate = async (_req, res, next) => {
+  try {
+    const stats = await deduplicateEvents();
+    res.json({ success: true, ...stats });
+  } catch (err) { next(err); }
+};
+router.get('/deduplicate', handleDeduplicate);
+router.post('/deduplicate', handleDeduplicate);
 
 // ── GET /api/events/live ── get latest live news events from MongoDB ─────────
 router.get('/live', async (req, res, next) => {

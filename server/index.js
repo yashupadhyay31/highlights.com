@@ -13,6 +13,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const { syncCurrentsNews } = require('./services/newsService');
+const { syncSocialFirehose } = require('./services/firehoseService');
 const eventsRouter   = require('./routes/events');
 const usersRouter    = require('./routes/users');
 const votesRouter    = require('./routes/votes');
@@ -91,14 +92,19 @@ if (!MONGO_URI) {
       });
       console.log('✅  MongoDB Atlas connected — highlightsDB');
 
-      // Ingest latest live news into MongoDB on startup
+      // Ingest latest live news & Telegram/Twitter/Wire firehose into MongoDB on startup
       syncCurrentsNews({ limit: 30 })
         .catch(err => console.warn('[NewsService Startup]', err.message));
+
+      syncSocialFirehose()
+        .catch(err => console.warn('[FirehoseService Startup]', err.message));
 
       // Automated periodic sync every 15 minutes
       setInterval(() => {
         syncCurrentsNews({ limit: 30 })
           .catch(err => console.warn('[NewsService Scheduled]', err.message));
+        syncSocialFirehose()
+          .catch(err => console.warn('[FirehoseService Scheduled]', err.message));
       }, 15 * 60 * 1000);
     } catch (err) {
       console.error('❌  MongoDB Atlas connection failed:', err.message);

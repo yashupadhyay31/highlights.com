@@ -1129,26 +1129,12 @@ export default function Globe3D() {
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444', boxShadow: '0 0 6px #EF4444' }} />
-          <span>Conflict/Zone</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#F97316', boxShadow: '0 0 6px #F97316' }} />
-          <span>High Tension</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EAB308', boxShadow: '0 0 6px #EAB308' }} />
-          <span>Political Unrest</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3B82F6', boxShadow: '0 0 6px #3B82F6' }} />
-          <span>Economic Impact</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 6px #10B981' }} />
-          <span>Environmental</span>
-        </div>
+        {CATEGORIES.slice(0, 6).map((cat) => (
+          <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#F1F5F9' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cat.color, boxShadow: `0 0 6px ${cat.color}` }} />
+            <span>{cat.name}</span>
+          </div>
+        ))}
       </div>
 
       {/* BOTTOM-RIGHT BADGE: Verified Sources • 12+ Trusted Sources */}
