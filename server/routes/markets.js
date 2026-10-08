@@ -2,6 +2,32 @@
 const router = require('express').Router();
 const Market = require('../models/Market');
 const { syncMarketIndices, getLatestStockIndices } = require('../services/marketService');
+const { syncForexRates, getLatestForexRates } = require('../services/forexService');
+const { syncCommodityPrices, getLatestCommodityPrices } = require('../services/commodityService');
+
+// ── GET /api/markets/forex ── live forex rates from Twelve Data ───────────────
+router.get('/forex', async (req, res, next) => {
+  try {
+    const force = req.query.force === 'true';
+    const result = await syncForexRates(force);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/markets/commodities ── live commodity prices from Twelve Data ────
+router.get('/commodities', async (req, res, next) => {
+  try {
+    const force = req.query.force === 'true';
+    const result = await syncCommodityPrices(force);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 
 // ── GET /api/markets/indices ── live global stock indices from Twelve Data ────
 router.get('/indices', async (req, res, next) => {

@@ -1492,9 +1492,25 @@ export const MARKETS_DATA = {
     { pair: 'USD/JPY', price: '149.32', rawPrice: 149.32, change: '-0.16%', isPositive: false },
     { pair: 'GBP/USD', price: '1.3187', rawPrice: 1.3187, change: '+0.34%', isPositive: true },
     { pair: 'USD/CHF', price: '0.8574', rawPrice: 0.8574, change: '-0.21%', isPositive: false },
-    { pair: 'AUD/USD', price: '0.6732', rawPrice: 0.6732, change: '+0.45%', isPositive: true }
+    { pair: 'AUD/USD', price: '0.6732', rawPrice: 0.6732, change: '+0.45%', isPositive: true },
+    { pair: 'USD/CAD', price: '1.3612', rawPrice: 1.3612, change: '-0.09%', isPositive: false },
+    { pair: 'NZD/USD', price: '0.6183', rawPrice: 0.6183, change: '+0.32%', isPositive: true },
+    { pair: 'EUR/GBP', price: '0.8374', rawPrice: 0.8374, change: '-0.05%', isPositive: false },
+    { pair: 'EUR/JPY', price: '164.92', rawPrice: 164.92, change: '+0.11%', isPositive: true },
+    { pair: 'GBP/JPY', price: '196.98', rawPrice: 196.98, change: '+0.18%', isPositive: true },
+    { pair: 'AUD/JPY', price: '100.47', rawPrice: 100.47, change: '+0.29%', isPositive: true },
+    { pair: 'EUR/AUD', price: '1.6403', rawPrice: 1.6403, change: '-0.17%', isPositive: false },
+    { pair: 'GBP/CHF', price: '1.1291', rawPrice: 1.1291, change: '+0.14%', isPositive: true },
+    { pair: 'USD/HKD', price: '7.7842', rawPrice: 7.7842, change: '+0.01%', isPositive: true },
+    { pair: 'USD/SGD', price: '1.3241', rawPrice: 1.3241, change: '-0.08%', isPositive: false },
+    { pair: 'USD/MXN', price: '17.2134', rawPrice: 17.2134, change: '+0.53%', isPositive: true },
+    { pair: 'USD/INR', price: '83.9750', rawPrice: 83.9750, change: '+0.12%', isPositive: true },
+    { pair: 'USD/CNY', price: '7.1053', rawPrice: 7.1053, change: '-0.06%', isPositive: false },
+    { pair: 'USD/KRW', price: '1328.50', rawPrice: 1328.50, change: '-0.22%', isPositive: false },
+    { pair: 'USD/BRL', price: '5.0412', rawPrice: 5.0412, change: '+0.38%', isPositive: true }
   ]
 };
+
 
 // Geodesic Cyber Arcs connecting major epicenters on 3D Globe
 export const GLOBE_ARCS = [

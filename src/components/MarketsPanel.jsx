@@ -29,6 +29,16 @@ export default function MarketsPanel() {
   const showCommodities = activeMarketTab === 'all' || activeMarketTab === 'commodities';
   const showForex = activeMarketTab === 'all' || activeMarketTab === 'forex';
 
+  // Dashboard shows top 10 only; Stocks tab shows all
+  const stocksToShow = activeMarketTab === 'stocks'
+    ? marketData.stocks
+    : marketData.stocks.slice(0, 10);
+
+  // Dashboard shows top 5 only; Forex tab shows all 20
+  const forexToShow = activeMarketTab === 'forex'
+    ? marketData.forex
+    : marketData.forex.slice(0, 5);
+
   return (
     <aside
       style={{
@@ -175,7 +185,7 @@ export default function MarketsPanel() {
                     letterSpacing: '0.01em'
                   }}
                 >
-                  Top Stock Indexes
+                  {activeMarketTab === 'stocks' ? 'All Stock Indexes' : 'Top Stock Indexes'}
                 </h4>
               </div>
 
@@ -198,7 +208,7 @@ export default function MarketsPanel() {
 
               {/* Table Rows */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {marketData.stocks.map((st, i) => {
+                {stocksToShow.map((st, i) => {
                   const isPositive = st.isPositive;
                   return (
                     <div
@@ -387,7 +397,7 @@ export default function MarketsPanel() {
                     letterSpacing: '0.01em'
                   }}
                 >
-                  Top Trading Forex
+                  {activeMarketTab === 'forex' ? 'All Trading Forex' : 'Top Trading Forex'}
                 </h4>
               </div>
 
@@ -410,7 +420,7 @@ export default function MarketsPanel() {
 
               {/* Table Rows */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {marketData.forex.map((fx, i) => {
+                {forexToShow.map((fx, i) => {
                   const isPositive = fx.isPositive;
                   return (
                     <div

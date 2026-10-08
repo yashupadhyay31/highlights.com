@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { INITIAL_EVENTS, CATEGORIES, REPORTER_TIERS, MARKETS_DATA } from '../data/mockEvents';
 import { fetchLiveNews } from '../data/newsService';
-import { fetchLiveMarketIndices } from '../data/marketService';
+import { fetchLiveMarketIndices, fetchLiveForexRates, fetchLiveCommodityPrices } from '../data/marketService';
 
 const AppContext = createContext(null);
 
@@ -98,6 +98,97 @@ export function AppProvider({ children }) {
     return () => {
       isMounted = false;
       clearInterval(syncInterval);
+    };
+  }, []);
+
+  // Live Forex Rates Sync via Twelve Data (Periodic Refresh every 60s)
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncLiveForex = async () => {
+      try {
+        const freshForex = await fetchLiveForexRates();
+        if (isMounted && Array.isArray(freshForex) && freshForex.length > 0) {
+          setMarketData(prev => {
+            // Merge live data into existing forex array (preserving order from mockEvents)
+            const updatedForex = prev.forex.map(existing => {
+              const match = freshForex.find(
+                item => item.pair && existing.pair &&
+                  item.pair.toUpperCase() === existing.pair.toUpperCase()
+              );
+              if (match) {
+                return {
+                  ...existing,
+                  price: match.price || existing.price,
+                  rawPrice: match.rawPrice !== undefined ? match.rawPrice : existing.rawPrice,
+                  change: match.change || existing.change,
+                  isPositive: match.isPositive !== undefined ? match.isPositive : existing.isPositive,
+                  lastTick: Date.now()
+                };
+              }
+              return existing;
+            });
+            return { ...prev, forex: updatedForex };
+          });
+        }
+      } catch (err) {
+        console.warn('[Forex Periodic Sync]', err.message);
+      }
+    };
+
+    // Fetch on mount
+    syncLiveForex();
+
+    // Refresh every 60s
+    const forexInterval = setInterval(syncLiveForex, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(forexInterval);
+    };
+  }, []);
+
+  // Live Commodity Prices Sync via Twelve Data (Periodic Refresh every 60s)
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncLiveCommodities = async () => {
+      try {
+        const freshCommodities = await fetchLiveCommodityPrices();
+        if (isMounted && Array.isArray(freshCommodities) && freshCommodities.length > 0) {
+          setMarketData(prev => {
+            const updatedCommodities = prev.commodities.map(existing => {
+              const match = freshCommodities.find(
+                item => item.name && existing.name &&
+                  item.name.toLowerCase() === existing.name.toLowerCase()
+              );
+              if (match) {
+                return {
+                  ...existing,
+                  price: match.price || existing.price,
+                  rawPrice: match.rawPrice !== undefined ? match.rawPrice : existing.rawPrice,
+                  change: match.change || existing.change,
+                  isPositive: match.isPositive !== undefined ? match.isPositive : existing.isPositive,
+                  lastTick: Date.now()
+                };
+              }
+              return existing;
+            });
+            return { ...prev, commodities: updatedCommodities };
+          });
+        }
+      } catch (err) {
+        console.warn('[Commodities Periodic Sync]', err.message);
+      }
+    };
+
+    // Fetch on mount
+    syncLiveCommodities();
+
+    // Refresh every 60s
+    const commodityInterval = setInterval(syncLiveCommodities, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(commodityInterval);
     };
   }, []);
 

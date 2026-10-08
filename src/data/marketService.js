@@ -42,3 +42,43 @@ export async function fetchLiveMarketIndices(force = false) {
 
   return null;
 }
+
+/**
+ * Fetch live forex rates from the backend (which caches Twelve Data API calls).
+ * Returns an array of forex pair objects or null on failure.
+ */
+export async function fetchLiveForexRates(force = false) {
+  try {
+    const res = await fetch(`/api/markets/forex${force ? '?force=true' : ''}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && Array.isArray(json.data) && json.data.length > 0) {
+        return json.data;
+      }
+    }
+  } catch (_) {
+    // Backend offline — caller will keep existing state
+  }
+  return null;
+}
+
+/**
+ * Fetch live commodity prices from the backend (which caches Twelve Data API calls).
+ * Returns an array of commodity objects or null on failure.
+ */
+export async function fetchLiveCommodityPrices(force = false) {
+  try {
+    const res = await fetch(`/api/markets/commodities${force ? '?force=true' : ''}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && Array.isArray(json.data) && json.data.length > 0) {
+        return json.data;
+      }
+    }
+  } catch (_) {
+    // Backend offline — caller will keep existing state
+  }
+  return null;
+}
+
+
